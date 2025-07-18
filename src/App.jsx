@@ -1,4 +1,5 @@
 import './App.css'
+import FloatingCalculator from './components/Floatingcalculator'
 import Header from './components/Header'
 import HeroSection from './components/HeroSection'
 import NotesPopup from './components/NotesPopup'
@@ -11,6 +12,7 @@ function App() {
       <Header />
       <HeroSection />
       <NotesPopup />
+      <FloatingCalculator />
     </div>
     </>
   )

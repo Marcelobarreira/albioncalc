@@ -1,17 +1,28 @@
 import React, { useState } from "react";
 
-function calcularRetorno(materialUsado, porcentagem) {
-  let total = 0;
-  let atual = materialUsado;
-  const pct = porcentagem / 100;
+// Lógica de reaproveitamento com retorno em loop
+function simularCraft(materialInicial, custoPorArma, taxaRetorno) {
+  let totalArmas = 0;
+  let materialDisponivel = materialInicial;
+  const pct = taxaRetorno / 100;
 
-  while (atual > 0.01) {
-    atual = atual * pct;
-    total += atual;
+  while (materialDisponivel >= custoPorArma) {
+    const armasFeitas = Math.floor(materialDisponivel / custoPorArma);
+    const usado = armasFeitas * custoPorArma;
+    const retorno = usado * pct;
+
+    totalArmas += armasFeitas;
+    materialDisponivel = materialDisponivel - usado + retorno;
   }
 
-  return total.toFixed(2);
+  return {
+    armas: totalArmas,
+    usado: materialInicial - materialDisponivel,
+    sobra: materialDisponivel.toFixed(2),
+  };
 }
+
+
 
 const armasAlbion = [
   { nome: "Espada T4", id: "T4_MAIN_SWORD" },
@@ -37,31 +48,50 @@ export default function CraftCalculator() {
   const [custo1, setCusto1] = useState(1);
   const [custo2, setCusto2] = useState(1);
   const [retorno, setRetorno] = useState(10);
+  const [valorMat1, setValorMat1] = useState(0);
+  const [valorMat2, setValorMat2] = useState(0);
+  const [valorVendaItem, setValorVendaItem] = useState(0);
   const [itemId, setItemId] = useState("T4_MAIN_SWORD");
   const [resultado, setResultado] = useState(null);
 
   const calcular = () => {
-    const usaSegundoMaterial = disp2 > 0 && custo2 > 0;
+  const usaSegundoMaterial = disp2 > 0 && custo2 > 0;
 
-    const armasMat1 = Math.floor(disp1 / custo1);
-    const armasMat2 = usaSegundoMaterial ? Math.floor(disp2 / custo2) : Infinity;
-    const armasPossiveis = Math.min(armasMat1, armasMat2);
+  const mat1 = simularCraft(disp1, custo1, retorno);
+  const mat2 = usaSegundoMaterial
+    ? simularCraft(disp2, custo2, retorno)
+    : { armas: Infinity, usado: 0, sobra: 0 };
 
-    const total1 = armasPossiveis * custo1;
-    const total2 = usaSegundoMaterial ? armasPossiveis * custo2 : 0;
+  const armasPossiveis = Math.min(mat1.armas, mat2.armas);
 
-    const retorno1 = calcularRetorno(total1, retorno);
-    const retorno2 = usaSegundoMaterial ? calcularRetorno(total2, retorno) : "—";
+  const usado1 = armasPossiveis * custo1;
+  const usado2 = usaSegundoMaterial ? armasPossiveis * custo2 : 0;
 
-    setResultado({
-      armas: armasPossiveis,
-      usado1: total1,
-      usado2: usaSegundoMaterial ? total2 : null,
-      retorno1,
-      retorno2,
-      unico: !usaSegundoMaterial,
-    });
-  };
+  const retorno1 = usado1 * (retorno / 100);
+  const retorno2 = usado2 * (retorno / 100);
+
+  const custoTotal =
+  disp1 * valorMat1 + (usaSegundoMaterial ? disp2 * valorMat2 : 0);
+
+
+  const ganhoTotal = armasPossiveis * valorVendaItem;
+  const lucro = ganhoTotal - custoTotal;
+
+  setResultado({
+    armas: armasPossiveis,
+    usado1,
+    usado2: usaSegundoMaterial ? usado2 : null,
+    retorno1: retorno1.toFixed(2),
+    retorno2: usaSegundoMaterial ? retorno2.toFixed(2) : "—",
+    custoTotal: custoTotal.toFixed(2),
+    receitaTotal: ganhoTotal.toFixed(2),
+    lucro: lucro.toFixed(2),
+    unico: !usaSegundoMaterial,
+    sobra1: mat1.sobra,
+    sobra2: usaSegundoMaterial ? mat2.sobra : "—",
+  });
+};
+
 
   return (
     <section className="py-12 px-6 bg-gradient-to-b from-slate-900 to-slate-800 text-white min-h-screen">
@@ -73,9 +103,12 @@ export default function CraftCalculator() {
         {[
           { label: "Qtd. Material 1", value: disp1, set: setDisp1 },
           { label: "Qtd. Material 2", value: disp2, set: setDisp2 },
+          { label: "Custo por Arma (Mat 1)", value: custo1, set: setCusto1 },
+          { label: "Custo por Arma (Mat 2)", value: custo2, set: setCusto2 },
           { label: "% de Retorno", value: retorno, set: setRetorno },
-          { label: "Custo Material 1", value: custo1, set: setCusto1 },
-          { label: "Custo Material 2", value: custo2, set: setCusto2 },
+          { label: "Valor unitário Material 1", value: valorMat1, set: setValorMat1 },
+          { label: "Valor unitário Material 2", value: valorMat2, set: setValorMat2 },
+          { label: "Valor de Venda do Item", value: valorVendaItem, set: setValorVendaItem },
         ].map(({ label, value, set }) => (
           <div key={label}>
             <label className="block text-amber-300 font-serif text-lg mb-1">{label}</label>
@@ -83,7 +116,7 @@ export default function CraftCalculator() {
               type="number"
               value={value}
               onChange={(e) => set(+e.target.value)}
-              className="w-full p-3 rounded-lg border border-amber-600 bg-slate-700 text-white placeholder:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-md"
+              className="w-full p-3 rounded-lg border border-amber-600 bg-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-md"
             />
           </div>
         ))}
@@ -130,10 +163,14 @@ export default function CraftCalculator() {
             className="mx-auto w-20 h-20"
           />
           <p><strong>Armas possíveis:</strong> {resultado.armas}</p>
-          <p>Material 1 usado: <strong>{resultado.usado1}</strong> → Retorno: <strong>{resultado.retorno1}</strong></p>
+          <p>Material 1 usado: <strong>{resultado.usado1}</strong> → Retorno: <strong>{resultado.retorno1}</strong> → Sobra: <strong>{resultado.sobra1}</strong></p>
           {!resultado.unico && (
-            <p>Material 2 usado: <strong>{resultado.usado2}</strong> → Retorno: <strong>{resultado.retorno2}</strong></p>
+            <p>Material 2 usado: <strong>{resultado.usado2}</strong> → Retorno: <strong>{resultado.retorno2}</strong> → Sobra: <strong>{resultado.sobra2}</strong></p>
           )}
+          <hr className="my-4 border-amber-700" />
+          <p><strong>Custo Total:</strong> {resultado.custoTotal}</p>
+          <p><strong>Receita Total:</strong> {resultado.receitaTotal}</p>
+          <p><strong>Lucro Líquido:</strong> <span className={resultado.lucro >= 0 ? "text-green-400" : "text-red-400"}>{resultado.lucro}</span></p>
         </div>
       )}
     </section>
